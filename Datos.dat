@@ -1,0 +1,221 @@
+############################################## SETS ###########################################################
+
+set TECNOLOGIAS:= hidro hidrop carbon gasCC gasCA diesel eolica solar lost;
+set ALMACENAMIENTO:= baterias;
+set ESCENARIOS_TOTALES:= seco normal humedo;
+set ESCENARIOS:= normal;
+set YEAR_TOTALES:= 2018 2019 2020 2021 2022 2023;
+set YEAR:= 2019;
+set YEAR_1:= 2019 2020 2021 2022 2023;
+set NODOS:= SIC SING;
+set NODOS_TOTALES:= SIC SING;
+
+#################################################################### PARAMETROS SIMULACI������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������N #############################################################################
+
+# iteraciones
+param ITERACIONES:=1;										
+
+#Tasa acumulada de crecimiento de la demanda
+param tasa:=
+2018	0
+2019	0.02
+2020	0.051
+2021	0.08
+2022	0.109
+2023	0.143;
+
+#Tasa descuento
+param td:=
+2018	0
+2019	0.02
+2020	0.05
+2021	0.10
+2022	0.16
+2023	0.22;
+
+
+#################################################################### PARAMETROS SISTEMA #############################################################################
+
+#Numero de bloques
+param N:=8686;
+
+#Hidrologias
+param hidrologia:=
+seco	0.75
+normal	1	
+humedo	1.5;
+
+#Minimos tecnicos
+param minimo:=
+seco	0.4
+normal	0.3	
+humedo	0.1;
+
+#Probabilidades
+param prob:=
+seco	0
+normal	1
+humedo	0;
+
+#Capacidad existente
+param Ke:= 
+[*,*,'SIC']:	2018	2019	2020	2021	2022	2023:=
+hidro	 		4022	4022	4022	4022	4022	4022 
+hidrop			2737	2737	2737	2737	2737	2737 
+carbon			2293	2293	2293	2293	2293	2293 
+gasCC	 		1884	1884	1884	1884	1884	1884 
+gasCA			651		651		651		651		651		651 
+diesel			2855	2855	2855	2855	2855	2855 
+eolica			1888	1888	2724	2856	3038	3137 
+solar			1864	1914	2395.27	2533.27	2533.27	2698.27
+lost			10000	10000	10000	10000	10000	10000
+						
+[*,*,'SING']:	2018	2019	2020	2021	2022	2023:=
+hidro			0		0		0		0		0		0
+hidrop	 		19 	 	19 	 	19 	 	19 	 	19 	 	19 
+carbon	 		2289	2127	2127	2127	2127	2127 
+gasCC			1890	1890	1890	1890	1890	1890 
+gasCA			10		10		10		10		10		10 
+diesel			268		268		268		268		268		268 
+eolica			199.52	200		458		458		458		458 
+solar			754		754		754		754		754		754 
+lost			10000	10000	10000	10000	10000	10000
+;						
+		
+#Requerimientos de reservas
+param REQPU:=
+SIC		253
+SING	108;
+param REQPD:=
+SIC		149
+SING	63;
+param REQSU:=
+SIC		206
+SING	88;
+param REQSD:=
+SIC		206
+SING	88;
+param REQT:=
+SIC		400
+SING	300;
+
+#Uso esperado de reservas
+param USORP:=0.25;
+param USORS:=0.1;
+param USORT:=0.05;
+
+
+#################################################################### COSTOS Y PARAMETROS CENTRALES #############################################################################
+
+# costos combustibles
+param comb:=
+hidro	0
+hidrop	0
+carbon	100
+gasCC	300
+gasCA	300diesel	700
+eolica	0
+solar	0
+lost	0
+;
+
+# Costos Variables no combustible
+param cvnc:=
+hidro	5
+hidrop	5
+carbon	5
+gasCC	5
+gasCA	10diesel	20
+eolica	5
+solar	5
+lost	800;
+																													# costos Polucion $/MWh
+param cpol:=
+hidro	0
+hidrop	0
+carbon	0
+gasCC	0
+gasCA	0diesel	0
+eolica	0
+solar	0
+lost	0;
+
+# Consumo Especifico Nominal
+param consumo:=
+hidro	0
+hidrop	0
+carbon	0.4
+gasCC	0.2
+gasCA	0.3diesel	0.3
+eolica	0
+solar	0
+lost	0;
+
+# Costo de capital anual
+param cf:=
+hidro	338
+hidrop	300
+carbon	295
+gasCC	128
+gasCA	110diesel	97
+eolica	137
+solar	103
+lost	0;
+
+# Costo de capital anual
+param cf:=
+baterias	100;
+
+# Costo de capital anual
+param eff:=
+baterias	0.95;
+
+# beta reserva primaria
+param BETA_P:=
+hidro	0.1
+hidrop	0.1
+carbon	0.05
+gasCC	0.05
+gasCA	0.05
+diesel	0.05
+eolica	0
+solar	0
+lost	0;
+
+# beta reserva secundaria
+param BETA_S:=
+hidro	0.5
+hidrop	0.5
+carbon	0.1
+gasCC	0.5
+gasCA	0.5
+diesel	0.5
+eolica	0.5
+solar	0.5
+lost	0;
+
+# beta reserva terciaria
+param BETA_T:=
+hidro	1
+hidrop	1
+carbon	1
+gasCC	1
+gasCA	1
+diesel	1
+eolica	1
+solar	1
+lost	0;	
+
+# salida y mantenimiento
+param salida:=
+hidro	0.95
+hidrop	1
+carbon	0.95
+gasCC	0.95
+gasCA	0.95
+diesel	0.95
+eolica	1
+solar	1
+lost	1;
+
+

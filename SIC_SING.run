@@ -1,0 +1,806 @@
+  #SCRIPT
+
+reset;
+reset options;
+reset data;
+
+# Archivos del Modelo
+
+model SIC_SING.mod;
+data Datos.dat;
+data Datos_D.dat;
+data Datos_Solar.dat;
+data Datos_Eolica.dat;
+data Datos_Hidrop.dat;
+
+
+# Opciones del Solver y AMPL
+
+option display_width 1000;
+option solver cplexamp;
+option show_stats 1;
+
+#Modo 1: Operacion, 2018-2023, H normal, Gas Flex
+#Modo 2: Operacion, AG 2019 - Jl 2020, H hum+norm+seca, Gas Inflex
+#Modo 3: Planificacion, 2018-2023, H normal, Gas Flex
+#Modo 4: Planificacion, 2030 (2018, tasa 0.35), sin cap existente, H hum+norm+seca, Gas Inflex
+#Modo 5: Planificacion, 2030 (2018, tasa 0.35), sin cap existente, H hum+norm+seca, Gas Flex
+#Modo 6: Planificacion, 2030 (2018, tasa 0.35), con cap existente, H norm, Gas Flex
+#Modo 7: Equilibrio competitivo
+#Modo 8: Planificacion, 2019, solo cap hidr existente, H hum+norm+seca, Gas Flex
+#Modo 9: Operacion, 2019, cap existente, H hum+norm+seca, Gas Flex
+
+
+let MODO:=9;
+
+################# Calculos
+
+let {j in TECNOLOGIAS} cv[j] := comb[j]*consumo[j];
+let POTF_R:=0.25;
+let PRICE_C:=cf['diesel']*1;
+#let PRICE_C:=0;
+
+################# Solucion MODO OPERACION
+
+if MODO=1
+
+then{
+let ITERACIONES:=1;
+
+let ESCENARIOS:= {'normal'};
+let YEAR:= 2019..2023;
+let prob['seco']:=0;
+let prob['normal']:=1;
+let prob['humedo']:=0;
+
+drop Gas4_Inflex;
+drop Inversiones;
+
+let {n in NODOS, n2 in NODOS} lmax[n,n2] := 1000;
+
+
+for {j in TECNOLOGIAS}
+{
+for {y in YEAR}
+{
+for {n in NODOS}
+{
+fix K[j,y,n]:=0;
+}
+}
+}
+
+solve;
+
+for {i in 1..ITERACIONES}
+{
+for {t in 1..N}
+{
+for {y in YEAR}
+{
+for {n in NODOS}
+{
+for {s in ESCENARIOS}
+{
+
+let PRICES[i,t,y,n,s]:=Balance_energia[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPU[i,t,y,n,s]:=Balance_RPU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPD[i,t,y,n,s]:=Balance_RPD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSU[i,t,y,n,s]:=Balance_RSU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSD[i,t,y,n,s]:=Balance_RSD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RGT[i,t,y,n,s]:=Balance_RGT[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+}
+}
+}
+}
+}
+
+display K > A1_INVERSIONES.txt;
+display Gas > A2_GAS.txt;
+
+display Y > B1_GENERACION.txt;
+display RPU > B2_RESERVAS_PRIMARIA_UP.txt;
+display RPD > B3_RESERVAS_PRIMARIA_DOWN.txt;
+display RSU > B4_RESERVAS_RSECUNDARIA_UP.txt;
+display RSD > B5_RESERVAS_RSECUNDARIA_DOWN.txt;
+display RGT > B6_RESERVAS_TERCIARIA.txt;
+display L > B7_LINEA.txt;
+
+display Costo_Total > C1_COSTOTOTAL.txt;
+display PRICES > C2_COSTOMARGINAL_ENERGIA.txt;
+display PRICES_RPU > C3_COSTOMARGINAL_RPRIMARIA_UP.txt;
+display PRICES_RPD > C4_COSTOMARGINAL_RPRIMARIA_DOWN.txt;
+display PRICES_RSU > C5_COSTOMARGINAL_RSECUNDARIA_UP.txt;
+display PRICES_RSD > C6_COSTOMARGINAL_RSECUNDARIA_DOWN.txt;
+display PRICES_RGT > C7_COSTOMARGINAL_RTERCIARIA.txt;
+
+display PROFITS > D1_PROFITS.txt;
+display PROFITS2 > D2_PROFITS2.txt;
+display POTF > D3_POTF.txt;
+
+}
+else;
+
+################# Solucion MODO OPERACION: GAS INFLEXIBLE
+
+if MODO=2
+then{
+
+let ITERACIONES:=1;
+
+let ESCENARIOS:= {'seco', 'normal', 'humedo'};
+let YEAR:= 2019..2019;
+let prob['seco']:=0.25;
+let prob['normal']:=0.5;
+let prob['humedo']:=0.25;
+
+drop Inversiones;
+
+let {n in NODOS, n2 in NODOS} lmax[n,n2] := 1000;
+
+for {j in TECNOLOGIAS}
+{
+for {y in YEAR}
+{
+for {n in NODOS}
+{
+fix K[j,y,n]:=0;
+}
+}
+}
+
+solve;
+
+for {i in 1..ITERACIONES}
+{
+for {t in 1..N}
+{
+for {y in YEAR}
+{
+for {n in NODOS}
+{
+for {s in ESCENARIOS}
+{
+
+let PRICES[i,t,y,n,s]:=Balance_energia[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPU[i,t,y,n,s]:=Balance_RPU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPD[i,t,y,n,s]:=Balance_RPD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSU[i,t,y,n,s]:=Balance_RSU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSD[i,t,y,n,s]:=Balance_RSD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RGT[i,t,y,n,s]:=Balance_RGT[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+
+}
+}
+}
+}
+}
+
+display K > A1_INVERSIONES.txt;
+display Gas > A2_GAS.txt;
+
+display Y > B1_GENERACION.txt;
+display RPU > B2_RESERVAS_PRIMARIA_UP.txt;
+display RPD > B3_RESERVAS_PRIMARIA_DOWN.txt;
+display RSU > B4_RESERVAS_RSECUNDARIA_UP.txt;
+display RSD > B5_RESERVAS_RSECUNDARIA_DOWN.txt;
+display RGT > B6_RESERVAS_TERCIARIA.txt;
+display L > B7_LINEA.txt;
+
+display Costo_Total > C1_COSTOTOTAL.txt;
+display PRICES > C2_COSTOMARGINAL_ENERGIA.txt;
+display PRICES_RPU > C3_COSTOMARGINAL_RPRIMARIA_UP.txt;
+display PRICES_RPD > C4_COSTOMARGINAL_RPRIMARIA_DOWN.txt;
+display PRICES_RSU > C5_COSTOMARGINAL_RSECUNDARIA_UP.txt;
+display PRICES_RSD > C6_COSTOMARGINAL_RSECUNDARIA_DOWN.txt;
+display PRICES_RGT > C7_COSTOMARGINAL_RTERCIARIA.txt;
+
+display PROFITS > D1_PROFITS.txt;
+display PROFITS2 > D2_PROFITS2.txt;
+display POTF > D3_POTF.txt;
+
+}
+else;
+
+################# Solucion MODO PLANIFICACION
+
+
+if MODO=3
+then{
+
+let ITERACIONES:=1;
+
+let ESCENARIOS:= {'normal'};
+let YEAR:= 2019..2023;
+let prob['seco']:=0;
+let prob['normal']:=1;
+let prob['humedo']:=0;
+
+drop Gas4_Inflex;
+let {n in NODOS, n2 in NODOS} lmax[n,n2] := 1500;
+
+solve;
+
+for {i in 1..ITERACIONES}
+{
+for {t in 1..N}
+{
+for {y in YEAR}
+{
+for {n in NODOS}
+{
+for {s in ESCENARIOS}
+{
+
+let PRICES[i,t,y,n,s]:=Balance_energia[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPU[i,t,y,n,s]:=Balance_RPU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPD[i,t,y,n,s]:=Balance_RPD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSU[i,t,y,n,s]:=Balance_RSU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSD[i,t,y,n,s]:=Balance_RSD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RGT[i,t,y,n,s]:=Balance_RGT[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+
+}
+}
+}
+}
+}
+
+display K > A1_INVERSIONES.txt;
+display Gas > A2_GAS.txt;
+
+display Y > B1_GENERACION.txt;
+display RPU > B2_RESERVAS_PRIMARIA_UP.txt;
+display RPD > B3_RESERVAS_PRIMARIA_DOWN.txt;
+display RSU > B4_RESERVAS_RSECUNDARIA_UP.txt;
+display RSD > B5_RESERVAS_RSECUNDARIA_DOWN.txt;
+display RGT > B6_RESERVAS_TERCIARIA.txt;
+display L > B7_LINEA.txt;
+
+display Costo_Total > C1_COSTOTOTAL.txt;
+display PRICES > C2_COSTOMARGINAL_ENERGIA.txt;
+display PRICES_RPU > C3_COSTOMARGINAL_RPRIMARIA_UP.txt;
+display PRICES_RPD > C4_COSTOMARGINAL_RPRIMARIA_DOWN.txt;
+display PRICES_RSU > C5_COSTOMARGINAL_RSECUNDARIA_UP.txt;
+display PRICES_RSD > C6_COSTOMARGINAL_RSECUNDARIA_DOWN.txt;
+display PRICES_RGT > C7_COSTOMARGINAL_RTERCIARIA.txt;
+
+display PROFITS > D1_PROFITS.txt;
+display PROFITS2 > D2_PROFITS2.txt;
+display POTF > D3_POTF.txt;
+}
+else;
+
+################# Solucion MODO Planificaci������n
+
+
+if MODO=4
+then{
+
+let ITERACIONES:=1;
+
+let ESCENARIOS:= {'seco', 'normal', 'humedo'};
+let YEAR:= 2018..2018;
+let tasa[2018]:=0.35;
+let {j in TECNOLOGIAS, y in YEAR_TOTALES, n in NODOS_TOTALES} Ke[j,y,n]:=0;
+let prob['seco']:=0.25;
+let prob['normal']:=0.5;
+let prob['humedo']:=0.25;
+let {n in NODOS, n2 in NODOS} lmax[n,n2] := 10000;
+
+let {n in NODOS_TOTALES} REQPU[n]:=0;
+let {n in NODOS_TOTALES} REQPD[n]:=0;
+let {n in NODOS_TOTALES} REQSU[n]:=0;
+let {n in NODOS_TOTALES} REQSD[n]:=0;
+let {n in NODOS_TOTALES} REQT[n]:=0;
+let cf['hidro']:=225;
+let {j in TECNOLOGIAS:j<>'lost'} cvnc[j]:=0;
+
+drop Inversiones;
+drop GasCC1;
+drop GasCC2;
+drop Carbon2;
+drop Carbon3;
+
+solve;
+
+for {i in 1..ITERACIONES}
+{
+for {t in 1..N}
+{
+for {y in YEAR}
+{
+for {n in NODOS}
+{
+for {s in ESCENARIOS}
+{
+
+let PRICES[i,t,y,n,s]:=Balance_energia[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPU[i,t,y,n,s]:=Balance_RPU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPD[i,t,y,n,s]:=Balance_RPD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSU[i,t,y,n,s]:=Balance_RSU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSD[i,t,y,n,s]:=Balance_RSD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RGT[i,t,y,n,s]:=Balance_RGT[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+
+}
+}
+}
+}
+}
+
+display K > A1_INVERSIONES.txt;
+display Gas > A2_GAS.txt;
+
+display Y > B1_GENERACION.txt;
+display RPU > B2_RESERVAS_PRIMARIA_UP.txt;
+display RPD > B3_RESERVAS_PRIMARIA_DOWN.txt;
+display RSU > B4_RESERVAS_RSECUNDARIA_UP.txt;
+display RSD > B5_RESERVAS_RSECUNDARIA_DOWN.txt;
+display RGT > B6_RESERVAS_TERCIARIA.txt;
+display L > B7_LINEA.txt;
+
+display Costo_Total > C1_COSTOTOTAL.txt;
+display PRICES > C2_COSTOMARGINAL_ENERGIA.txt;
+display PRICES_RPU > C3_COSTOMARGINAL_RPRIMARIA_UP.txt;
+display PRICES_RPD > C4_COSTOMARGINAL_RPRIMARIA_DOWN.txt;
+display PRICES_RSU > C5_COSTOMARGINAL_RSECUNDARIA_UP.txt;
+display PRICES_RSD > C6_COSTOMARGINAL_RSECUNDARIA_DOWN.txt;
+display PRICES_RGT > C7_COSTOMARGINAL_RTERCIARIA.txt;
+
+display PROFITS > D1_PROFITS.txt;
+display PROFITS2 > D2_PROFITS2.txt;
+display POTF > D3_POTF.txt;
+
+}
+else;
+
+################# Solucion MODO Planificaci������n
+
+
+if MODO=5
+then{
+
+let ITERACIONES:=1;
+
+let ESCENARIOS:= {'seco', 'normal', 'humedo'};
+let YEAR:= 2018..2018;
+let tasa[2018]:=0.35;
+let {j in TECNOLOGIAS, y in YEAR_TOTALES, n in NODOS_TOTALES} Ke[j,y,n]:=0;
+let prob['seco']:=0.25;
+let prob['normal']:=0.5;
+let prob['humedo']:=0.25;
+let {n in NODOS, n2 in NODOS} lmax[n,n2] := 10000;
+
+let {n in NODOS_TOTALES} REQPU[n]:=0;
+let {n in NODOS_TOTALES} REQPD[n]:=0;
+let {n in NODOS_TOTALES} REQSU[n]:=0;
+let {n in NODOS_TOTALES} REQSD[n]:=0;
+let {n in NODOS_TOTALES} REQT[n]:=0;
+let cf['hidro']:=225;
+let {j in TECNOLOGIAS:j<>'lost'} cvnc[j]:=0;
+
+drop Gas4_Inflex;
+drop Inversiones;
+drop GasCC1;
+drop GasCC2;
+drop Carbon2;
+drop Carbon3;
+
+solve;
+
+for {i in 1..ITERACIONES}
+{
+for {t in 1..N}
+{
+for {y in YEAR}
+{
+for {n in NODOS}
+{
+for {s in ESCENARIOS}
+{
+
+let PRICES[i,t,y,n,s]:=Balance_energia[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPU[i,t,y,n,s]:=Balance_RPU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPD[i,t,y,n,s]:=Balance_RPD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSU[i,t,y,n,s]:=Balance_RSU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSD[i,t,y,n,s]:=Balance_RSD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RGT[i,t,y,n,s]:=Balance_RGT[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+
+}
+}
+}
+}
+}
+
+display K > A1_INVERSIONES.txt;
+display Gas > A2_GAS.txt;
+
+display Y > B1_GENERACION.txt;
+display RPU > B2_RESERVAS_PRIMARIA_UP.txt;
+display RPD > B3_RESERVAS_PRIMARIA_DOWN.txt;
+display RSU > B4_RESERVAS_RSECUNDARIA_UP.txt;
+display RSD > B5_RESERVAS_RSECUNDARIA_DOWN.txt;
+display RGT > B6_RESERVAS_TERCIARIA.txt;
+display L > B7_LINEA.txt;
+
+display Costo_Total > C1_COSTOTOTAL.txt;
+display PRICES > C2_COSTOMARGINAL_ENERGIA.txt;
+display PRICES_RPU > C3_COSTOMARGINAL_RPRIMARIA_UP.txt;
+display PRICES_RPD > C4_COSTOMARGINAL_RPRIMARIA_DOWN.txt;
+display PRICES_RSU > C5_COSTOMARGINAL_RSECUNDARIA_UP.txt;
+display PRICES_RSD > C6_COSTOMARGINAL_RSECUNDARIA_DOWN.txt;
+display PRICES_RGT > C7_COSTOMARGINAL_RTERCIARIA.txt;
+
+display PROFITS > D1_PROFITS.txt;
+display PROFITS2 > D2_PROFITS2.txt;
+display POTF > D3_POTF.txt;
+
+}
+else;
+
+################# Solucion MODO Planificaci������n
+
+
+if MODO=6
+then{
+
+let ITERACIONES:=1;
+
+let ESCENARIOS:= {'normal'};
+let YEAR:= 2018..2018;
+let tasa[2018]:=0.35;
+let prob['seco']:=0;
+let prob['normal']:=1;
+let prob['humedo']:=0;
+let {n in NODOS, n2 in NODOS} lmax[n,n2] := 10000;
+
+let {n in NODOS_TOTALES} REQPU[n]:=0;
+let {n in NODOS_TOTALES} REQPD[n]:=0;
+let {n in NODOS_TOTALES} REQSU[n]:=0;
+let {n in NODOS_TOTALES} REQSD[n]:=0;
+let {n in NODOS_TOTALES} REQT[n]:=0;
+let cf['hidro']:=225;
+let {j in TECNOLOGIAS:j<>'lost'} cvnc[j]:=0;
+
+drop Inversiones;
+drop GasCC1;
+drop GasCC2;
+drop Carbon2;
+drop Carbon3;
+
+solve;
+
+for {i in 1..ITERACIONES}
+{
+for {t in 1..N}
+{
+for {y in YEAR}
+{
+for {n in NODOS}
+{
+for {s in ESCENARIOS}
+{
+
+let PRICES[i,t,y,n,s]:=Balance_energia[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPU[i,t,y,n,s]:=Balance_RPU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPD[i,t,y,n,s]:=Balance_RPD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSU[i,t,y,n,s]:=Balance_RSU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSD[i,t,y,n,s]:=Balance_RSD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RGT[i,t,y,n,s]:=Balance_RGT[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+
+}
+}
+}
+}
+}
+
+display K > A1_INVERSIONES.txt;
+display Gas > A2_GAS.txt;
+
+display Y > B1_GENERACION.txt;
+display RPU > B2_RESERVAS_PRIMARIA_UP.txt;
+display RPD > B3_RESERVAS_PRIMARIA_DOWN.txt;
+display RSU > B4_RESERVAS_RSECUNDARIA_UP.txt;
+display RSD > B5_RESERVAS_RSECUNDARIA_DOWN.txt;
+display RGT > B6_RESERVAS_TERCIARIA.txt;
+display L > B7_LINEA.txt;
+
+display Costo_Total > C1_COSTOTOTAL.txt;
+display PRICES > C2_COSTOMARGINAL_ENERGIA.txt;
+display PRICES_RPU > C3_COSTOMARGINAL_RPRIMARIA_UP.txt;
+display PRICES_RPD > C4_COSTOMARGINAL_RPRIMARIA_DOWN.txt;
+display PRICES_RSU > C5_COSTOMARGINAL_RSECUNDARIA_UP.txt;
+display PRICES_RSD > C6_COSTOMARGINAL_RSECUNDARIA_DOWN.txt;
+display PRICES_RGT > C7_COSTOMARGINAL_RTERCIARIA.txt;
+
+display PROFITS > D1_PROFITS.txt;
+display PROFITS2 > D2_PROFITS2.txt;
+display POTF > D3_POTF.txt;
+
+}
+else;
+
+################# Solucion EQ COMPETITIVO
+
+
+if MODO=7
+then{
+let ITERACIONES:=1;
+
+let ESCENARIOS:= {'seco', 'normal', 'humedo'};
+let YEAR:= 2018..2018;
+let tasa[2018]:=0.35;
+let prob['seco']:=0.25;
+let prob['normal']:=0.5;
+let prob['humedo']:=0.25;
+
+let {n in NODOS, n2 in NODOS} lmax[n,n2] := 10000;
+
+drop Inversiones;
+
+solve;
+
+for {i in 1..ITERACIONES}
+{
+for {t in 1..N}
+{
+for {y in YEAR}
+{
+for {n in NODOS}
+{
+for {s in ESCENARIOS}
+{
+
+let PRICES[i,t,y,n,s]:=Balance_energia[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPU[i,t,y,n,s]:=Balance_RPU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPD[i,t,y,n,s]:=Balance_RPD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSU[i,t,y,n,s]:=Balance_RSU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSD[i,t,y,n,s]:=Balance_RSD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RGT[i,t,y,n,s]:=Balance_RGT[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+
+}
+}
+}
+}
+}
+
+display K > A1_INVERSIONES.txt;
+display Gas > A2_GAS.txt;
+
+display Y > B1_GENERACION.txt;
+display RPU > B2_RESERVAS_PRIMARIA_UP.txt;
+display RPD > B3_RESERVAS_PRIMARIA_DOWN.txt;
+display RSU > B4_RESERVAS_RSECUNDARIA_UP.txt;
+display RSD > B5_RESERVAS_RSECUNDARIA_DOWN.txt;
+display RGT > B6_RESERVAS_TERCIARIA.txt;
+display L > B7_LINEA.txt;
+
+display Costo_Total > C1_COSTOTOTAL.txt;
+display PRICES > C2_COSTOMARGINAL_ENERGIA.txt;
+display PRICES_RPU > C3_COSTOMARGINAL_RPRIMARIA_UP.txt;
+display PRICES_RPD > C4_COSTOMARGINAL_RPRIMARIA_DOWN.txt;
+display PRICES_RSU > C5_COSTOMARGINAL_RSECUNDARIA_UP.txt;
+display PRICES_RSD > C6_COSTOMARGINAL_RSECUNDARIA_DOWN.txt;
+display PRICES_RGT > C7_COSTOMARGINAL_RTERCIARIA.txt;
+
+display PROFITS > D1_PROFITS.txt;
+display PROFITS2 > D2_PROFITS2.txt;
+display POTF > D3_POTF.txt;
+
+}
+else;
+
+
+################# Solucion MODO Planificacion
+
+
+if MODO=8
+then{
+
+let ITERACIONES:=1;
+
+let ESCENARIOS:= {'seco', 'normal', 'humedo'};
+let YEAR:= 2019..2019;
+let {j in TECNOLOGIAS, y in YEAR_TOTALES, n in NODOS_TOTALES:j<>'hidro'&&j<>'hidrop'} Ke[j,y,n]:=0;
+let prob['seco']:=0.25;
+let prob['normal']:=0.5;
+let prob['humedo']:=0.25;
+let {n in NODOS, n2 in NODOS} lmax[n,n2] := 100000;
+
+drop Gas4_Inflex;
+drop Inversiones;
+drop GasCC1;
+drop GasCC2;
+drop Carbon2;
+drop Carbon3;
+
+solve;
+
+for {i in 1..ITERACIONES}
+{
+for {t in 1..N}
+{
+for {y in YEAR}
+{
+for {n in NODOS}
+{
+for {s in ESCENARIOS}
+{
+
+let PRICES[i,t,y,n,s]:=Balance_energia[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPU[i,t,y,n,s]:=Balance_RPU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPD[i,t,y,n,s]:=Balance_RPD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSU[i,t,y,n,s]:=Balance_RSU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSD[i,t,y,n,s]:=Balance_RSD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RGT[i,t,y,n,s]:=Balance_RGT[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+
+}
+}
+}
+}
+}
+
+display K > A1_INVERSIONES.txt;
+display Gas > A2_GAS.txt;
+
+display Y > B1_GENERACION.txt;
+display RPU > B2_RESERVAS_PRIMARIA_UP.txt;
+display RPD > B3_RESERVAS_PRIMARIA_DOWN.txt;
+display RSU > B4_RESERVAS_RSECUNDARIA_UP.txt;
+display RSD > B5_RESERVAS_RSECUNDARIA_DOWN.txt;
+display RGT > B6_RESERVAS_TERCIARIA.txt;
+display L > B7_LINEA.txt;
+
+display Costo_Total > C1_COSTOTOTAL.txt;
+display PRICES > C2_COSTOMARGINAL_ENERGIA.txt;
+display PRICES_RPU > C3_COSTOMARGINAL_RPRIMARIA_UP.txt;
+display PRICES_RPD > C4_COSTOMARGINAL_RPRIMARIA_DOWN.txt;
+display PRICES_RSU > C5_COSTOMARGINAL_RSECUNDARIA_UP.txt;
+display PRICES_RSD > C6_COSTOMARGINAL_RSECUNDARIA_DOWN.txt;
+display PRICES_RGT > C7_COSTOMARGINAL_RTERCIARIA.txt;
+
+display PROFITS > D1_PROFITS.txt;
+display PROFITS2 > D2_PROFITS2.txt;
+display POTF > D3_POTF.txt;
+
+}
+else;
+
+
+################# Solucion MODO Operacion
+
+
+if MODO=9
+
+then{
+let ITERACIONES:=1;
+
+let ESCENARIOS:= {'seco', 'normal', 'humedo'};
+let YEAR:= 2019..2019;
+let prob['seco']:=0.25;
+let prob['normal']:=0.5;
+let prob['humedo']:=0.25;
+
+drop Gas4_Inflex;
+drop Inversiones;
+drop GasCC1;
+drop GasCC2;
+drop Carbon2;
+drop Carbon3;
+
+let {n in NODOS, n2 in NODOS} lmax[n,n2] := 1000;
+
+
+for {j in TECNOLOGIAS}
+{
+for {y in YEAR}
+{
+for {n in NODOS}
+{
+fix K[j,y,n]:=0;
+}
+}
+}
+
+solve;
+
+for {i in 1..ITERACIONES}
+{
+for {t in 1..N}
+{
+for {y in YEAR}
+{
+for {n in NODOS}
+{
+for {s in ESCENARIOS}
+{
+
+let PRICES[i,t,y,n,s]:=Balance_energia[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPU[i,t,y,n,s]:=Balance_RPU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RPD[i,t,y,n,s]:=Balance_RPD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSU[i,t,y,n,s]:=Balance_RSU[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RSD[i,t,y,n,s]:=Balance_RSD[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+let PRICES_RGT[i,t,y,n,s]:=Balance_RGT[t,y,n,s]/(prob[s]+0.00001)*(1+td[y]);
+
+}
+}
+}
+}
+}
+
+display K > A1_INVERSIONES.txt;
+display Gas > A2_GAS.txt;
+
+display Y > B1_GENERACION.txt;
+display RPU > B2_RESERVAS_PRIMARIA_UP.txt;
+display RPD > B3_RESERVAS_PRIMARIA_DOWN.txt;
+display RSU > B4_RESERVAS_RSECUNDARIA_UP.txt;
+display RSD > B5_RESERVAS_RSECUNDARIA_DOWN.txt;
+display RGT > B6_RESERVAS_TERCIARIA.txt;
+display L > B7_LINEA.txt;
+
+display Costo_Total > C1_COSTOTOTAL.txt;
+display PRICES > C2_COSTOMARGINAL_ENERGIA.txt;
+display PRICES_RPU > C3_COSTOMARGINAL_RPRIMARIA_UP.txt;
+display PRICES_RPD > C4_COSTOMARGINAL_RPRIMARIA_DOWN.txt;
+display PRICES_RSU > C5_COSTOMARGINAL_RSECUNDARIA_UP.txt;
+display PRICES_RSD > C6_COSTOMARGINAL_RSECUNDARIA_DOWN.txt;
+display PRICES_RGT > C7_COSTOMARGINAL_RTERCIARIA.txt;
+
+display PROFITS > D1_PROFITS.txt;
+display PROFITS2 > D2_PROFITS2.txt;
+display POTF > D3_POTF.txt;
+
+}
+else;
